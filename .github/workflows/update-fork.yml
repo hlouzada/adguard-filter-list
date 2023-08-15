@@ -1,0 +1,31 @@
+on:
+  workflow_dispatch:
+
+jobs:
+  fetch-upstream:
+    runs-on: ubuntu-latest
+    name: Fetch Upstream
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          token: ${{ github.token }}
+      - name: Configure git
+        run: |
+          git config --global user.name "CI Bot"
+          git config --global user.email "hlouzada@users.noreply.github.com"
+          git remote add upstream https://github.com/ppfeufer/adguard-filter-list.git
+          default_branch=$( git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@' )
+        shell: bash
+      - name: Fetch and merge
+        id: fetch-merge
+        run: |
+          git fetch upstream
+          git checkout $default_branch
+          lines=$( git diff $default_branch..upstream/$default_branch -- . ':(exclude).github/**' | wc -l )
+          echo "Number of detected line changes: $lines"
+          if [ $lines -gt 0 ]; then
+            git merge upstream/main
+            git push
+          fi
+        shell: bash
